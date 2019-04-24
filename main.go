@@ -118,7 +118,7 @@ func main() {
 	}
 }
 
-func connect(query string) *websocket.Conn {
+func reconnect(query string) *websocket.Conn {
 	var u url.URL
 	var conn *websocket.Conn
 	var err error
@@ -160,7 +160,7 @@ func connect(query string) *websocket.Conn {
 func hub(c_hub <-chan struct{}, conf Config) {
 
 	query := "localUser=" + conf.Uuid
-	conn := connect(query)
+	conn := reconnect(query)
 	defer conn.Close()
 	go func(){
 		for{
