@@ -21,11 +21,54 @@ type Config struct {
 	Port     int     `ini:"port,ssh"`
 }
 
-type Json struct {
+type Session struct {
 	Type string   `json:"type"`
 	Sdp  string   `json:"sdp"`	
 	Error string  `json:"error"`
 }
+
+
+func reconnect(closeWS <-chan struct{}, query string) *websocket.Conn {
+	var u url.URL
+	var ws *websocket.Conn
+	var err error
+	
+	u = url.URL{Scheme: "wss", Host: "sqs.io", Path: "/signal", RawQuery: query}
+	for {
+		ws, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
+		if err != nil {
+			log.Println(err)
+			time.Sleep(30 * time.Second)
+			continue
+		}
+		break
+	}
+
+	lastResponse := time.Now()
+	ws.SetPongHandler(func(msg string) error {
+		lastResponse = time.Now()
+		return nil
+	})
+		
+	go func() {
+		for {
+			err := ws.WriteMessage(websocket.PingMessage, nil)
+			if err != nil {
+				log.Println(err)
+				return 
+			}   
+			time.Sleep((120 * time.Second)/2)
+			if(time.Now().Sub(lastResponse) > (120 * time.Second)) {
+				log.Println("Signaling server close connection")
+				ws.Close()
+				return
+			}
+		}
+	}()
+	
+	return ws
+}
+
 
 func main() {
 	log.SetFlags(0)
@@ -90,99 +133,53 @@ func main() {
 	}
 	
 	done := make(chan struct{})
-	c_hub := make(chan struct{})
-	
+	closeWS := make(chan struct{})
+	var ws *websocket.Conn	
 	go func() {
 		for {
-			hub(c_hub, conf)
-			time.Sleep(30 * time.Second)
-			log.Println("reconnect with the signaling server")
-		}
-	}()	
-	
-	for {
-		select {
-		case <-done:
-			return
-		case <-interrupt:
-			// Cleanly close the connection by sending a close message and then
-			// waiting (with timeout) for the server to close the connection.
-			fmt.Println("interrupt")
-			close(c_hub)
 			select {
-				case <-done:
-				case <-time.After(time.Second):
-			}
-			return
-		}
-	}
-}
-
-func reconnect(query string) *websocket.Conn {
-	var u url.URL
-	var conn *websocket.Conn
-	var err error
-	
-	u = url.URL{Scheme: "wss", Host: "sqs.io", Path: "/signal", RawQuery: query}
-	for {
-		conn, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
-		if err != nil {
-			log.Println(err)
-			time.Sleep(30 * time.Second)
-			continue
-		}
-		break
-	}
-
-	lastResponse := time.Now()
-	conn.SetPongHandler(func(msg string) error {
-		lastResponse = time.Now()
-		return nil
-	})
-		
-	go func() {
-		for {
-			err := conn.WriteMessage(websocket.PingMessage, nil)
-			if err != nil {
-				return 
-			}   
-			time.Sleep((120 * time.Second)/2)
-			if(time.Now().Sub(lastResponse) > (120 * time.Second)) {
-				log.Println("signaling server close connection")
-				conn.Close()
+			case <-done:
 				return
-			}
-		}
-	}()
- 	return conn
-}
-
-func hub(c_hub <-chan struct{}, conf Config) {
-
-	query := "localUser=" + conf.Uuid
-	conn := reconnect(query)
-	defer conn.Close()
-	go func(){
-		for{
-			select {
-			case <-c_hub:
-				err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			case <-interrupt:
+				// Cleanly close the connection by sending a close message and then
+				// waiting (with timeout) for the server to close the connection.
+				fmt.Println("interrupt")
+				err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 				if err != nil {
 					log.Println("write close:", err)
 				}
-				return
+				select {
+					case <-done:
+					case <-time.After(time.Second):
+				}
+				os.Exit(0)
 			}
 		}
 	}()
-	message := Json{}
+	
 	for {
-		err := conn.ReadJSON(&message)
+		query := "localUser=" + conf.Uuid
+		ws = reconnect(closeWS, query)
+		hub(ws, conf)
+		time.Sleep(30 * time.Second)
+		log.Println("Reconnect with the signaling server")
+	}
+
+
+}
+
+
+
+func hub(ws *websocket.Conn, conf Config) {
+	var msg Session
+	for {
+		err := ws.ReadJSON(&msg)
 		if err != nil {
 			_,ok:= err.(*websocket.CloseError) 
 			if !ok {log.Println("websocket", err)}
 			break
 		} 
-		err = interpreter(conn, message, conf)
+		err = interpreter(ws, msg, conf)
 		if err != nil {log.Println(err)}
 	}
 }

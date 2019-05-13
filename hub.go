@@ -18,7 +18,7 @@ func (rtc *Wrap) Write(data []byte) (int, error) {
 	return len(data), err
 }
 
-func interpreter(ws *websocket.Conn, data Json, conf Config) error {
+func interpreter(ws *websocket.Conn, data Session, conf Config) error {
 	if data.Error != "" {
 		return fmt.Errorf(data.Error)
 	}
