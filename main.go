@@ -27,7 +27,6 @@ type Session struct {
 	Error string  `json:"error"`
 }
 
-
 func reconnect(closeWS <-chan struct{}, query string) *websocket.Conn {
 	var u url.URL
 	var ws *websocket.Conn
@@ -68,7 +67,6 @@ func reconnect(closeWS <-chan struct{}, query string) *websocket.Conn {
 	
 	return ws
 }
-
 
 func main() {
 	log.SetFlags(0)
@@ -167,8 +165,6 @@ func main() {
 
 
 }
-
-
 
 func hub(ws *websocket.Conn, conf Config) {
 	var msg Session
