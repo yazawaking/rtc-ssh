@@ -98,7 +98,6 @@ func main() {
 			os.Exit(0)
 		} 
 		defer file.Close()	
-	
 	}
 	saveConf := func(){
 		if conf.Host == "" { conf.Host = defaultHost }
@@ -108,7 +107,6 @@ func main() {
 		defer file.Close()
 		err = ini.Encode(file, &conf)
 		check(err)
-	
 	}	
 	
 	loadConf()
