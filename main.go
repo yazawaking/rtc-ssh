@@ -27,7 +27,7 @@ type Session struct {
 	Error string  `json:"error"`
 }
 
-func reconnect(closeWS <-chan struct{}, query string) *websocket.Conn {
+func reconnect(query string) *websocket.Conn {
 	var u url.URL
 	var ws *websocket.Conn
 	var err error
@@ -129,8 +129,8 @@ func main() {
 	}
 	
 	done := make(chan struct{})
-	closeWS := make(chan struct{})
 	var ws *websocket.Conn	
+	
 	go func() {
 		for {
 			select {
@@ -155,7 +155,7 @@ func main() {
 	
 	for {
 		query := "localUser=" + conf.Uuid
-		ws = reconnect(closeWS, query)
+		ws = reconnect(query)
 		hub(ws, conf)
 		time.Sleep(30 * time.Second)
 		log.Println("Reconnect with the signaling server")
