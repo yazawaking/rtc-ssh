@@ -26,7 +26,6 @@ func interpreter(ws *websocket.Conn, data Session, conf Config) error {
 	switch data.Type {	
 		case "signal_OK":
 			log.Println("Signal OK")
-		
 		case "offer":
 			pc, err := webrtc.NewPeerConnection(configRTC)
 			if err != nil {
@@ -73,8 +72,6 @@ func interpreter(ws *websocket.Conn, data Session, conf Config) error {
 			if err = ws.WriteJSON(answer); err != nil {
 				return err
 			}
-		
-			
 		default:
 			return fmt.Errorf("unknown signaling message %v", data.Type)
 	}
