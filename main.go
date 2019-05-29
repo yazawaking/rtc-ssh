@@ -164,19 +164,7 @@ func main() {
 
 }
 
-func hub(ws *websocket.Conn, conf Config) {
-	var msg Session
-	for {
-		err := ws.ReadJSON(&msg)
-		if err != nil {
-			_,ok:= err.(*websocket.CloseError) 
-			if !ok {log.Println("websocket", err)}
-			break
-		} 
-		err = interpreter(ws, msg, conf)
-		if err != nil {log.Println(err)}
-	}
-}
+
 
 func check(e error) {
     if e != nil {

@@ -13,12 +13,32 @@ type Wrap struct {
 	*webrtc.DataChannel
 }
 
+var pc *webrtc.PeerConnection
+
 func (rtc *Wrap) Write(data []byte) (int, error) {
 	err := rtc.DataChannel.Send(data)
 	return len(data), err
 }
 
-func interpreter(ws *websocket.Conn, data Session, conf Config) error {
+func hub(ws *websocket.Conn, conf Config) {
+	var msg Session
+	for {
+		err := ws.ReadJSON(&msg)
+		if err != nil {
+			_,ok:= err.(*websocket.CloseError) 
+			if !ok {log.Println("websocket", err)}
+			break
+		} 
+		err = startRTC(ws, msg, conf)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+
+
+func startRTC(ws *websocket.Conn, data Session, conf Config) error {
 	if data.Error != "" {
 		return fmt.Errorf(data.Error)
 	}
@@ -26,16 +46,19 @@ func interpreter(ws *websocket.Conn, data Session, conf Config) error {
 	switch data.Type {	
 		case "signal_OK":
 			log.Println("Signal OK")
+			
+			
 		case "offer":
-			pc, err := webrtc.NewPeerConnection(configRTC)
+			var err error
+			pc, err = webrtc.NewPeerConnection(configRTC)
 			if err != nil {
 				return err
 			}
-									
+			
 			pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
 				log.Println("ICE Connection State has changed:", state.String())
 			})
-			 					
+			
 			pc.OnDataChannel(func(dc *webrtc.DataChannel) {
 				if dc.Label() == "SSH" {
 					ssh, err := net.Dial("tcp", fmt.Sprintf("%s:%d", conf.Host, conf.Port))
@@ -47,8 +70,9 @@ func interpreter(ws *websocket.Conn, data Session, conf Config) error {
 						DataChannel(dc, ssh)
 					}
 				}
+			//	defer pc.Close()
 			})
-						
+					
 			if err := pc.SetRemoteDescription(webrtc.SessionDescription{
 				Type: webrtc.SDPTypeOffer,
 				SDP:  data.Sdp,
@@ -72,6 +96,7 @@ func interpreter(ws *websocket.Conn, data Session, conf Config) error {
 			if err = ws.WriteJSON(answer); err != nil {
 				return err
 			}
+			
 		default:
 			return fmt.Errorf("unknown signaling message %v", data.Type)
 	}
@@ -80,6 +105,7 @@ func interpreter(ws *websocket.Conn, data Session, conf Config) error {
 
 
 func DataChannel(dc *webrtc.DataChannel, ssh net.Conn) {
+
 	dc.OnOpen(func() {	
 		err := dc.SendText("OPEN_RTC_CHANNEL")
 		if err != nil{
