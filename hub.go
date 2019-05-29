@@ -46,8 +46,6 @@ func startRTC(ws *websocket.Conn, data Session, conf Config) error {
 	switch data.Type {	
 		case "signal_OK":
 			log.Println("Signal OK")
-			
-			
 		case "offer":
 			var err error
 			pc, err = webrtc.NewPeerConnection(configRTC)
@@ -70,7 +68,6 @@ func startRTC(ws *websocket.Conn, data Session, conf Config) error {
 						DataChannel(dc, ssh)
 					}
 				}
-			//	defer pc.Close()
 			})
 					
 			if err := pc.SetRemoteDescription(webrtc.SessionDescription{
@@ -105,7 +102,6 @@ func startRTC(ws *websocket.Conn, data Session, conf Config) error {
 
 
 func DataChannel(dc *webrtc.DataChannel, ssh net.Conn) {
-
 	dc.OnOpen(func() {	
 		err := dc.SendText("OPEN_RTC_CHANNEL")
 		if err != nil{
