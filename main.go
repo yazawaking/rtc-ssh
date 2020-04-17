@@ -32,7 +32,7 @@ func reconnect(query string) *websocket.Conn {
 	var ws *websocket.Conn
 	var err error
 	
-	u = url.URL{Scheme: "wss", Host: "sqs.io", Path: "/signal", RawQuery: query}
+	u = url.URL{Scheme: "wss", Host: "webrtc.sqs.io", Path: "/signal", RawQuery: query}
 	for {
 		ws, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 		if err != nil {
