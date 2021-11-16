@@ -1,3 +1,5 @@
+# Project is closed 
+
 # Rtc-SSH
 ##### SSH (Secure Shell) over WebRTC
 Rtc-SSH enables connection with SSH  Raspberry PI, BeagleBone and other devices, from the browser or (cli) client  <a href="https://github.com/mxseba/rtc-terminal">rtc-terminal</a>   using WebRTC. Solves the problem of the lack of public IP address, proxy server, servers behind NAT etc. You can connect to an SSH session: https://webrtc.sqs.io
